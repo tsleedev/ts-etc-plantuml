@@ -1,40 +1,56 @@
 @startuml
-'https://plantuml.com/activity-diagram-beta
+skinparam ActivityBackgroundColor<<API>> LightBlue
+skinparam ActivityBackgroundColor<<UI>> LightGreen
+skinparam ActivityBackgroundColor<<Error>> LightPink
+skinparam ActivityBackgroundColor<<APIDeviceFlag>> LightYellow
+skinparam ActivityBackgroundColor<<MainPageFlag>> LightCyan
 
 start
 :앱 시작;
 
 fork
-  :스플래쉬 화면 표시;
-  :최소 1초 대기;
-fork again
-  :FCM Token 변경 감지 시작;
-  if (FCM Token 변경 감지?) then (yes)
-    if (API Device 완료 플래그 설정?) then (yes)
-      :API Device 업데이트;
-      if (업데이트 성공?) then (yes)
-        :새 FCM Token 저장;
-      else (no)
-        :Token 업데이트 실패 로그;
-        :나중에 재시도 예약;
-      endif
+  :스플래쉬 화면 표시;<<UI>>
+  :API Device 완료 플래그 설정 감지;<<APIDeviceFlag>>
+  repeat
+    :메인 페이지 로드 완료 플래그 설정됨?;<<MainPageFlag>>
+    if (yes) then (yes)
+      break
     else (no)
-      :변경된 FCM Token 임시 저장;
+    endif
+  repeat while (1초 경과?) is (no) not (yes)
+  :스플래쉬 화면 종료;<<UI>>
+  kill
+fork again
+  :FCM Token 변경 감지;
+  if (FCM Token 변경?) then (yes)
+    :API Device 완료 플래그 설정됨?;<<APIDeviceFlag>>
+    if (yes) then (yes)
+      :API Device 업데이트
+      ---
+      fcmToken;<<API>>
+      :새 fcmToken 저장;
+      kill
+    else (no)
+      :fcmToken 임시 저장;
       kill
     endif
+  else (no)
+    stop
   endif
 fork again
-  :API Version 체크;
+  :API Version 체크
+  ---
+  appVersion, osType, osVersion ;<<API>>
 
   if (서버 점검 중?) then (yes)
-    :서버 점검 팝업;
+    :서버 점검 팝업;<<UI>>
     :사용자 선택 대기;
     -> //확인//;
     :앱 종료;
     kill
   else (no)
     if (강제 업데이트?) then (yes)
-      :강제 업데이트 팝업;
+      :강제 업데이트 팝업;<<UI>>
       :사용자 선택 대기;
       -> //확인//;
       :앱스토어;
@@ -42,71 +58,55 @@ fork again
     else (no)
       fork
         if (권유 업데이트?) then (yes)
-          :권유 업데이트 팝업 표시;
+          :권유 업데이트 팝업 표시;<<UI>>
           :사용자 선택 대기;
           if (지금 업데이트) then (yes)
             :앱스토어;
             kill
           else (나중에)
             :팝업 닫기;
+            kill
           endif
         else (no)
+          stop
         endif
       fork again
         if (DeviceUID 존재?) then (yes)
-          :API Device 업데이트;
-          note right
-            앱 버전 등 변경사항 업데이트
-            접속 시간 변경
-          end note
+          :API Device 업데이트
+          ---
+          appVersion, osType,
+          osVersion, uuid
+          (임시 저장된 fcmToken이 있으면 포함);<<API>>
         else (no)
-          :API Device 등록;
+          :API Device 등록
+          ---
+          appVersion, deviceName,
+          deviceType, osType,
+          osVersion, uuid
+          (임시 저장된 fcmToken이 있으면 포함);<<API>>
           -> //서버에서 DeviceUID 생성 후 내려줌//;
           :DeviceUID 저장;
         endif
-        :API Device 완료;
-        :API Device 완료 플래그 설정;
+        :API Device 완료 플래그 설정;<<APIDeviceFlag>>
       end fork
     endif
   endif
-
-  #lightgray:메인 페이지로 이동;
-  :메인 페이지 로딩 완료;
 end fork
-
-:스플래쉬 화면 종료;
-
-while (앱 실행 중) is (yes)
-  if (FCM Token 변경 감지?) then (yes)
-    if (API Device 완료 플래그 설정?) then (yes)
-      :API Device 업데이트;
-      note right: FCM Token 업데이트
-      if (업데이트 성공?) then (yes)
-        :새 FCM Token 저장;
-      else (no)
-        :Token 업데이트 실패 로그;
-        :나중에 재시도 예약;
-      endif
-    else (no)
-      :변경된 FCM Token 임시 저장;
-      :API Device 완료 대기;
-    endif
-  endif
-endwhile (no)
-
+:메인 페이지 로드;<<UI>>
+:메인 페이지 로드 완료 플래그 설정;<<MainPageFlag>>
 stop
 
 partition API 실패 처리 {
-  :오류 로그 기록;
+  :API 오류;<<Error>>
   if (네트워크 오류?) then (yes)
-    :네트워크 상태 확인 요청;
+    :네트워크 상태 확인 요청;<<UI>>
   else if (서버 오류?) then (yes)
-    :서버 팀에 알림;
+    :서버 팀에 알림;<<Error>>
   else (기타 오류)
-    :오류 분석 및 리포트;
+    :오류 분석 및 리포트;<<Error>>
   endif
-  :사용자에게 적절한 메시지 표시;
-  :재시도 옵션 제공;
+  :사용자에게 적절한 메시지 표시;<<UI>>
+  :재시도 옵션 제공;<<UI>>
 }
 
 @enduml
