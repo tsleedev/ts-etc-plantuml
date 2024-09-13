@@ -1,0 +1,72 @@
+@startuml
+!define TABLE(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define PK(x) <u>x</u>
+!define FK(x) <i>x</i>
+
+TABLE(Users, "Users\n(사용자)") {
+    PK(uid) : VARCHAR(50)
+    email : VARCHAR(100)
+    username : VARCHAR(50)
+}
+
+TABLE(Devices, "Devices\n(기기 정보)") {
+    PK(deviceId) : VARCHAR(36)
+    FK(uid) : VARCHAR(50)
+    isLoggedIn : BOOLEAN
+    deviceIdentifier : VARCHAR(50)
+    deviceToken : VARCHAR(100)
+    appVersion : INT
+    deviceName : VARCHAR(50)
+    deviceType : VARCHAR(20)
+    fcmToken : VARCHAR(255)
+    osType : VARCHAR(20)
+    osVersion : VARCHAR(20)
+    lastUpdatedAt : BIGINT
+    lastAccessedAt : BIGINT
+    createdAt : BIGINT
+}
+
+TABLE(DeviceStatus, "DeviceStatus\n(기기 상태)") {
+    PK(FK(deviceId)) : VARCHAR(36)
+    status : ENUM('ACTIVE', 'INVALID_TOKEN', 'SCHEDULED_FOR_DELETION', 'DELETED')
+    lastStatusChangeAt : BIGINT
+    invalidTokenSince : BIGINT
+    scheduledDeletionAt : BIGINT
+}
+
+TABLE(NotificationSettings, "NotificationSettings\n(알림 설정)") {
+    PK(deviceId) : VARCHAR(36)
+    FK(latestHistoryId) : VARCHAR(36)
+    notifyService : BOOLEAN
+    notifyAd : BOOLEAN
+    notifyMeetingStatus : BOOLEAN
+    lastUpdatedAt : BIGINT
+}
+
+TABLE(NotificationChangeHistory, "NotificationChangeHistory\n(알림 설정 변경 이력)") {
+    PK(historyId) : VARCHAR(36)
+    FK(previousHistoryId) : VARCHAR(36)
+    FK(deviceId) : VARCHAR(36)
+    notificationType : VARCHAR(20)
+    oldValue : BOOLEAN
+    newValue : BOOLEAN
+    changedAt : BIGINT
+}
+
+TABLE(LoginHistory, "LoginHistory\n(로그인 이력)") {
+    PK(id) : BIGINT AUTO_INCREMENT
+    FK(deviceId) : VARCHAR(36)
+    FK(uid) : VARCHAR(50)
+    actionType : ENUM('LOGIN', 'LOGOUT', 'SESSION_EXPIRED')
+    timestamp : BIGINT
+}
+
+Users ||--o{ Devices : "owns"
+Devices ||--|| DeviceStatus : "has"
+Devices ||--|| NotificationSettings : "has"
+Devices ||--o{ LoginHistory : "records"
+Users ||--o{ LoginHistory : "performs"
+NotificationSettings ||--o{ NotificationChangeHistory : "has history"
+NotificationChangeHistory }o--|| NotificationChangeHistory : "previous change"
+
+@enduml
