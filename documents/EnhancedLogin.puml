@@ -1,0 +1,70 @@
+@startuml
+'https://plantuml.com/ko/activity-diagram-beta
+skinparam ActivityBackgroundColor<<Alert>> LightPink
+skinparam ActivityBackgroundColor<<Button>> LightYellow
+skinparam ActivityBackgroundColor<<Screen>> LightBlue
+
+skinparam ActivityBorderColor #666666
+skinparam ArrowColor #666666
+skinparam ActivityDiamondBorderColor #666666
+
+start
+:앱 시작;
+
+if (DB에 UserInfo 존재 && 로그인이 되어있지 않음) then (yes)
+    if (싱크가 완료되지 않은 기록 존재) then (yes)
+        :안 닫히는 로그인 화면;<<Screen>>
+
+        split
+            :이메일 로그인;<<Button>>
+            if (같은 계정) then (yes)
+                :서버 싱크;
+                :메인 화면;<<Screen>>
+                stop
+            else (no)
+                :로그아웃;
+                :안내 팝업;<<Alert>>
+                detach
+            endif
+
+        split again
+            :이메일로 가입하기;
+            :회원 가입 불가 팝업;<<Alert>>
+            detach
+
+        split again
+            :SNS 로그인;<<Button>>
+            split
+                :로그인;
+                if (같은 계정) then (yes)
+                    :서버 싱크;
+                    :메인 화면;<<Screen>>
+                    stop
+                else (no)
+                    :로그아웃;
+                    :안내 팝업;<<Alert>>
+                    detach
+                endif
+            split again
+                :회원가입;
+                :로그아웃;
+                :안내 팝업;<<Alert>>
+                detach
+            end split
+
+        split again
+            :오류 고객 지원 안내 버튼;<<Button>>
+            :오류 고객 지원 안내 화면;<<Screen>>
+            :오류 고객 지원 메일 버튼;<<Alert>>
+            detach
+        end split
+    else (no)
+        :기록 삭제;
+        :닫히는 로그인 화면;<<Screen>>
+        stop
+    endif
+else (no)
+    :메인 화면;<<Screen>>
+    stop
+endif
+@enduml
